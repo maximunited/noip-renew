@@ -14,7 +14,7 @@ NOTE: this is an up-to-date fork of loblab/noip-renew repository as it seems it'
 - Updated: 02/02/2023
 - Original Author: [loblab](https://github.com/loblab)
 - Fork Mantainer: [maximunited](https://github.com/maximunited)
-- Contributors: [neothematrix](https://github.com/neothematrix)[IDemixI](https://github.com/IDemixI), [Angel0ffDeath](https://github.com/Angel0ffDeath), [benyjr](https://github.com/benyjr)
+- Contributors: [neothematrix](https://github.com/neothematrix), [IDemixI](https://github.com/IDemixI), [Angel0ffDeath](https://github.com/Angel0ffDeath), [benyjr](https://github.com/benyjr)
 
 ![noip.com hosts](https://raw.githubusercontent.com/maximunited/noip-renew/master/screenshot.png)
 
