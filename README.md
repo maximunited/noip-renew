@@ -20,9 +20,9 @@ NOTE: this is an up-to-date fork of loblab/noip-renew repository as it seems it'
 
 ## Usage
 
-1. Clone this repository to the device you will be running it from. (`git clone https://github.com/maximunited/noip-renew.git`)
-2. Run setup.sh and set your noip.com account information,
-3. Run noip-renew-USERNAME command.
+1. Clone this repository to the device you will be running it from (`git clone https://github.com/maximunited/noip-renew.git`)
+2. Run setup.sh and set your noip.com account information
+3. Run noip-renew-USERNAME command
 
 Check confirmed records from multiple log files:
 
@@ -34,7 +34,7 @@ grep -h Confirmed *.log | grep -v ": 0" | sort
 For docker users, run the following:
 ```sh
 echo 'add username here' > ${SECRETSDIR}/noip_username
-echo 'add base64 encoded password here' > ${SECRETSDIR}/noip_password
+echo 'add password here' | base64 > ${SECRETSDIR}/noip_password
 debug_lvl=2
 docker build -t maximunited/selenium:debian .
 echo -e "$(crontab -l)"$'\n'"12  3  *  *  1,3,5  docker run --network host maximunited/selenium:debian "${SECRETSDIR}/noip_username" "${SECRETSDIR}/noip_password" ${debug_lvl}" | crontab -
