@@ -1,0 +1,22 @@
+---
+version: "3.9"
+services:
+  noip-renew:
+    build:
+      context: ./noip-renew
+      shm_size: 512m
+    container_name: noip-renew
+    network_mode: host
+    #command: ${NOIP_USER} ${NOIP_PASS} 2
+    command: /run/secrets/noip_username /run/secrets/noip_password 2
+    environment:
+      - TZ
+    secrets:
+      - noip_username
+      - noip_password
+
+secrets:
+  noip_username:
+    file: ${SECRETSDIR}/noip_username
+  noip_password:
+    file: ${SECRETSDIR}/noip_password

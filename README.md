@@ -33,13 +33,17 @@ grep -h Confirmed *.log | grep -v ": 0" | sort
 
 For docker users, run the following:
 ```sh
-echo 'add username here' > my_username_file
-echo 'add base64 encoded password here' > my_password_file
+echo 'add username here' > ${SECRETSDIR}/noip_username
+echo 'add base64 encoded password here' > ${SECRETSDIR}/noip_password
 debug_lvl=2
 docker build -t maximunited/selenium:debian .
-echo -e "$(crontab -l)"$'\n'"12  3  *  *  1,3,5  docker run --network host maximunited/selenium:debian ${my_username_file} ${my_password_file} ${debug_lvl}" | crontab -
+echo -e "$(crontab -l)"$'\n'"12  3  *  *  1,3,5  docker run --network host maximunited/selenium:debian "${SECRETSDIR}/noip_username" "${SECRETSDIR}/noip_password" ${debug_lvl}" | crontab -
 ```
 NOTE: with newer versions of ChromeDriver (>v99) you might need to increase the shm size of the container otherwise ChromeDriver will crash and throw an exception. To do it, you can just add the "--shm-size="512m" flag to the docker run command.
+
+## Usage with Docker Compose
+
+Refer to the sample [docker-compose-sample.yml](https://github.com/maximunited/noip-renew/blob/master/docker-compose-sample.yml)
 
 ## Remarks
 
