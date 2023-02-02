@@ -102,3 +102,6 @@ ENV/
 debug1.png
 debug2.png
 results.png
+noip-renew.py_WORKS
+noip-renew.py_OLD
+.gitignore

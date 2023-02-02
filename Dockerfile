@@ -1,13 +1,9 @@
 FROM debian
-LABEL maintainer="loblab"
+LABEL maintainer="maxim"
 
-#ARG TZ=Asia/Shanghai
-#ARG APT_MIRROR=mirrors.163.com
-ARG DEBIAN_FRONTED=noninteractive
+ARG DEBIAN_FRONTEND=noninteractive
 ARG PYTHON=python3
 
-#RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
-#RUN sed -i "s/deb.debian.org/$APT_MIRROR/" /etc/apt/sources.list
 RUN apt-get update && apt-get -y upgrade
 RUN apt-get -y install chromium-chromedriver || \
     apt-get -y install chromium-driver || \
@@ -16,10 +12,11 @@ RUN apt-get -y install ${PYTHON}-pip
 RUN $PYTHON -m pip install selenium
 RUN apt-get -y install curl wget
 
-RUN mkdir -p /home/loblab && \
-    useradd -d /home/loblab -u 1001 loblab && \
-    chown loblab:loblab /home/loblab
-USER loblab
-WORKDIR /home/loblab
-COPY /noip-renew.py /home/loblab/
-ENTRYPOINT ["python3", "/home/loblab/noip-renew.py"]
+RUN mkdir -p /home/maxim && \
+    useradd -d /home/maxim -u 1001 maxim && \
+    chown maxim:maxim /home/maxim
+USER maxim
+WORKDIR /home/maxim
+COPY /noip-renew.py /home/maxim/
+CMD touch /usr/local/bin/noip-renew-skd.sh
+ENTRYPOINT ["python3", "/home/maxim/noip-renew.py"]

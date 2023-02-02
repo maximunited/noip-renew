@@ -12,11 +12,11 @@ using Python/Selenium with Chrome headless mode.
 - Author: loblab
 - Contributor: [IDemixI](https://www.github.com/IDemixI)
 
-![noip.com hosts](https://raw.githubusercontent.com/loblab/noip-renew/master/screenshot.png)
+![noip.com hosts](https://raw.githubusercontent.com/maximunited/noip-renew/master/screenshot.png)
 
 ## Usage
 
-1. Clone this repository to the device you will be running it from. (`git clone https://github.com/loblab/noip-renew.git`)
+1. Clone this repository to the device you will be running it from. (`git clone https://github.com/maximunited/noip-renew.git`)
 2. Run setup.sh and set your noip.com account information,
 3. Run noip-renew-USERNAME command.
 
@@ -34,7 +34,7 @@ my_password='add password here'
 my_host_num='add number of hosts here'
 debug_lvl=2
 docker build -t loblab/selenium:debian .
-echo -e "$(crontab -l)"$'\n'"12  3  *  *  1,3,5  docker run --network host loblab/selenium:debian ${my_username} ${my_password} ${my_host_num} ${debug_lvl}" | crontab -
+echo -e "$(crontab -l)"$'\n'"12  3  *  *  1,3,5  docker run --network host loblab/selenium:debian ${my_username} ${my_password} ${debug_lvl}" | crontab -
 ```
 
 ## Remarks
