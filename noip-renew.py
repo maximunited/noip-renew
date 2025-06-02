@@ -12,7 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+#import debugpy
+#debugpy.listen(("0.0.0.0", 5768))
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
@@ -21,12 +22,17 @@ from selenium.webdriver.support.wait  import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from datetime import date
 from datetime import timedelta
+from datetime import datetime
 import time
 import sys
 import os
 import re
 import base64
 import subprocess
+import json
+
+#print("Waiting for client to attach...")
+#debugpy.wait_for_client()
 
 class Logger:
     def __init__(self, level):
@@ -69,7 +75,7 @@ class Robot:
         return browser
 
     def login(self):
-        self.logger.log(f"Opening {Robot.LOGIN_URL}...")
+        self.logger.log(f"Opening {Robot.LOGIN_URL} ...")
         self.browser.get(Robot.LOGIN_URL)
         
         try:
@@ -80,7 +86,7 @@ class Robot:
         if self.debug > 1:
             self.browser.save_screenshot("debug1.png")
 
-        self.logger.log("Logging in...")
+        self.logger.log("Logging in ...")
         
         ele_usr = elem.find_element(By.NAME, "username")
         ele_pwd = elem.find_element(By.NAME, "password")
@@ -125,6 +131,28 @@ class Robot:
             iteration += 1
         self.browser.save_screenshot("results.png")
         self.logger.log(f"Confirmed hosts: {count}", 2)
+
+        current_time = datetime.now().strftime("%Y/%m/%d %H:%M:%S")
+        json_data = {
+            "timestamp": current_time,
+            "confirmed_hosts": count,
+            "expiration_days": expiration_days
+        }
+        hosts_confirmed_flagfile = "/shared/noip-hosts-renewed.txt"
+        with open(hosts_confirmed_flagfile, "w") as file:
+            file.write(str(count) + '\n')
+        hosts_confirmed_json = "/shared/noip-hosts-renewed.json"
+
+        # Convert data to JSON string
+        json_string = json.dumps(json_data, indent=4)
+
+        # Write JSON string to file
+        with open(hosts_confirmed_json, "w") as json_file:
+            json_file.write(json_string)
+
+        #with open(hosts_confirmed_json, "w") as json_file:
+        #    json.dump(json_data, hosts_confirmed_json, indent=4)
+
         nr = min(next_renewal) - 6
         today = date.today() + timedelta(days=nr)
         day = str(today.day)
@@ -136,7 +164,7 @@ class Robot:
         return True
 
     def open_hosts_page(self):
-        self.logger.log(f"Opening {Robot.HOST_URL}...")
+        self.logger.log(f"Opening {Robot.HOST_URL} ...")
         try:
             self.browser.get(Robot.HOST_URL)
         except TimeoutException as e:
@@ -180,7 +208,7 @@ class Robot:
 
     @staticmethod
     def get_host_button(host, iteration):
-        return host.find_element(By.XPATH, ".//following-sibling::td[4]/button[contains(@class, 'btn')]")
+        return host.find_element(By.XPATH, ".//following-sibling::td[4]/button[contains(@class, 'btn-success')]")
 
     def get_hosts(self):
         host_tds = self.browser.find_elements(By.XPATH, "//td[@data-title=\"Host\"]")
