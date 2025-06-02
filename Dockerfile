@@ -4,12 +4,15 @@ LABEL maintainer="maxim"
 ARG DEBIAN_FRONTEND=noninteractive
 ARG PYTHON=python3
 
+ENV CONTAINER=1
+
 RUN apt-get update && apt-get -y upgrade
 RUN apt-get -y install chromium-chromedriver || \
     apt-get -y install chromium-driver || \
     apt-get -y install chromedriver
 RUN apt-get -y install ${PYTHON}-pip
-#RUN $PYTHON -m pip install selenium
+#RUN apt-get -y install ${PYTHON}-selenium
+RUN apt-get -y install ${PYTHON}-pyotp
 
 # Install selenium inside a virtual environment
 RUN apt-get -y install ${PYTHON}-venv

@@ -8,21 +8,33 @@ using Python/Selenium with Chrome headless mode.
 
 NOTE: this is an up-to-date fork of loblab/noip-renew repository as it seems it's not anymore actively developed, I'll try to keep this fork up to date and working as much as possible. Feel free to contribute!
 
-- Platform: Debian/Ubuntu/Raspbian/Arch Linux, no GUI needed (tested on Debian 9.x/10.x/Arch Linux); python 3.6+
+- Platform: Debian/Ubuntu/Raspbian/Arch Linux, no GUI needed (tested on Debian 9.x/10.x/11.x/Arch Linux); python 3.5+
+- Chrome webdriver - tested up to version 120.0.6099.102-rpt1
+- Selenium - v.3.x (python 3.5+); v. 4.0.0 (python 3.7+); v.4.10.0 and above (python 3.8+); Tested up to v. 4.17.2
 - Ref: [Technical explanation for the code (Chinese)](http://www.jianshu.com/p/3c8196175147)
 - Created: 11/04/2017
 - Updated: 02/02/2023
 - Original Author: [loblab](https://github.com/loblab)
 - Fork Mantainer: [maximunited](https://github.com/maximunited)
-- Contributors: [neothematrix](https://github.com/neothematrix), [IDemixI](https://github.com/IDemixI), [Angel0ffDeath](https://github.com/Angel0ffDeath), [benyjr](https://github.com/benyjr)
+- Contributors: [neothematrix](https://github.com/neothematrix), [Angel0ffDeath](https://github.com/Angel0ffDeath), [benyjr](https://github.com/benyjr)
 
-![noip.com hosts](https://raw.githubusercontent.com/maximunited/noip-renew/master/screenshot.png)
+![noip.com hosts](https://raw.githubusercontent.com/loblab/noip-renew/master/screenshot.png)
+
+## Prerequisites
+
+ENABLE 2FA authentication on your account and save the 2FA Secret key that is shared only once when you activate it
+
+ChromeDriver is required for the script to interface with noip.com from within the script.
+ChromeDriver must be maintained to match the installed version of Chrome.
+There is no automated repository that provides ChromeDriver package beyond Ubuntu 18 LTS.
+Installing Chromium via Snap and then linking chromedriver to /usr/bin/chromedriver should keep chromediver sufficiently up to date without manual intervention
 
 ## Usage
 
 1. Clone this repository to the device you will be running it from (`git clone https://github.com/maximunited/noip-renew.git`)
 2. Run setup.sh and set your noip.com account information
-3. Run noip-renew-USERNAME command
+3. If you want to use randomized cronjob answer y to the question and give time interval hours, i.e. 7-18 (for instance). This will give a window from 7:00 to 18:59; Take into account it is possible script to try to run on days on which Daylight Saving Time (DST) occurs (if you have such thing in your country), so avoid hours in which this event occurs, otherwise the scrippt may not run. For instance in Europe DST events are last Sundays of March and October at 3AM (March) or 4AM (October). Script probably will not run on the DST day in March if scheduled between 3 and 4 AM. It is too complicated to incorporate such logic, but if someone would like then try.
+4. Run noip-renew-USERNAME command
 
 Check confirmed records from multiple log files:
 
@@ -31,13 +43,18 @@ grep -h Confirmed *.log | grep -v ": 0" | sort
 ```
 ## Usage with Docker
 
-For docker users, run the following:
+For docker users you need to define the following ENV variables:
+
+```
+'NOIP_USERNAME = <your username>'
+'NOIP_PASSWORD = <your password (plain not base64 encoded)>'
+'NOIP_2FA_SECRET_KEY = <your 2FA secret key that appeared when you setup 2FA>'
+NOIP_DEBUG = <optional, defaults to 1>
+```
+
+so you can run the following:
 ```sh
-echo 'add username here' > ${SECRETSDIR}/noip_username
-echo 'add password here' | base64 > ${SECRETSDIR}/noip_password
-debug_lvl=2
-docker build -t maximunited/selenium:debian .
-echo -e "$(crontab -l)"$'\n'"12  3  *  *  1,3,5  docker run --network host maximunited/selenium:debian "${SECRETSDIR}/noip_username" "${SECRETSDIR}/noip_password" ${debug_lvl}" | crontab -
+echo -e "$(crontab -l)"$'\n'"12  3  *  *  1,3,5  docker run --rm --network host -e 'NOIP_USERNAME=<your_username>' -e 'NOIP_PASSWORD=<your_password>' -e 'NOIP_2FA_SECRET_KEY=<your 2fa secret key>' -e NOIP_DEBUG=2 moebiuss/noip-renew" | crontab -
 ```
 NOTE: with newer versions of ChromeDriver (>v99) you might need to increase the shm size of the container otherwise ChromeDriver will crash and throw an exception. To do it, you can just add the "--shm-size="512m" flag to the docker run command.
 

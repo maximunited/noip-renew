@@ -16,6 +16,7 @@
 #debugpy.listen(("0.0.0.0", 5768))
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.wait  import WebDriverWait
@@ -23,6 +24,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from datetime import date
 from datetime import timedelta
 from datetime import datetime
+from pyotp import *
 import time
 import sys
 import os
@@ -30,6 +32,9 @@ import re
 import base64
 import subprocess
 import json
+
+VERSION = "2.0.3"
+DOCKER = False
 
 #print("Waiting for client to attach...")
 #debugpy.wait_for_client()
@@ -51,10 +56,12 @@ class Robot:
     LOGIN_URL = "https://www.noip.com/login"
     HOST_URL = "https://my.noip.com/dynamic-dns"
 
-    def __init__(self, username, password, debug):
+    def __init__(self, username, password, totp_secret, debug, docker):
         self.debug = debug
+        self.docker = docker
         self.username = username
         self.password = password
+        self.totp_secret = totp_secret
         self.browser = self.init_browser()
         self.logger = Logger(debug)
 
@@ -92,9 +99,29 @@ class Robot:
         ele_pwd = elem.find_element(By.NAME, "password")
         
         ele_usr.send_keys(self.username)
-        ele_pwd.send_keys(base64.b64decode(self.password).decode('utf-8'))
+
+        # If running on docker, password is not base64 encoded
+        if self.docker:
+            ele_pwd.send_keys(self.password)
+        else:
+            ele_pwd.send_keys(base64.b64decode(self.password).decode('utf-8'))
         ele_pwd.send_keys(Keys.ENTER)
         
+        try:
+            elem = WebDriverWait(self.browser, 10).until( EC.presence_of_element_located((By.ID, "verificationCode")))
+        except:
+            raise Exception("2FA verify page could not load")
+
+        if self.debug > 1:
+            self.browser.save_screenshot("debug-otp.png")
+        
+        self.logger.log("Sending OTP...")
+
+        ele_challenge = elem.find_element(By.NAME, "challenge_code")
+        self.browser.execute_script("arguments[0].focus();", ele_challenge)
+        ActionChains(self.browser).send_keys(TOTP(self.totp_secret).now()).perform()
+        ActionChains(self.browser).send_keys(Keys.ENTER).perform()
+
         # After Loggin browser loads my.noip.com page - give him some time to load
         # 'noip-cart' element is near the end of html, so html have been loaded
         try:
@@ -109,17 +136,17 @@ class Robot:
         count = 0
 
         self.open_hosts_page()
-        self.browser.implicitly_wait(1)
+        self.browser.implicitly_wait(5)
         iteration = 1
         next_renewal = []
 
         hosts = self.get_hosts()
         for host in hosts:
             host_link = self.get_host_link(host, iteration) # This is for if we wanted to modify our Host IP.
-            host_button = self.get_host_button(host, iteration) # This is the button to confirm our free host
             host_name = host_link.text
             expiration_days = self.get_host_expiration_days(host, iteration)
             if expiration_days <= 7:
+                host_button = self.get_host_button(host, iteration) # This is the button to confirm our free host
                 self.update_host(host_button, host_name)
                 expiration_days = self.get_host_expiration_days(host, iteration)
                 next_renewal.append(expiration_days)
@@ -157,10 +184,11 @@ class Robot:
         today = date.today() + timedelta(days=nr)
         day = str(today.day)
         month = str(today.month)
-        try:
-            subprocess.call(['/usr/local/bin/noip-renew-skd.sh', day, month, "True"])
-        except (FileNotFoundError,PermissionError):
-            self.logger.log(f"noip-renew-skd.sh missing or not executable, skipping crontab configuration")
+        if not self.docker:
+            try:
+                subprocess.call(['/usr/local/bin/noip-renew-skd.sh', day, month, "True"])
+            except (FileNotFoundError,PermissionError):
+                self.logger.log(f"noip-renew-skd.sh missing or not executable, skipping crontab configuration")
         return True
 
     def open_hosts_page(self):
@@ -204,11 +232,11 @@ class Robot:
 
     @staticmethod
     def get_host_link(host, iteration):
-        return host.find_element(By.XPATH, ".//a[@class='link-info cursor-pointer']")
+        return host.find_element(By.XPATH, ".//a[@class='link-info cursor-pointer notranslate']")
 
     @staticmethod
     def get_host_button(host, iteration):
-        return host.find_element(By.XPATH, ".//following-sibling::td[4]/button[contains(@class, 'btn-success')]")
+        return host.find_element(By.XPATH, "//td[6]/button[contains(@class, 'btn-success')]")
 
     def get_hosts(self):
         host_tds = self.browser.find_elements(By.XPATH, "//td[@data-title=\"Host\"]")
@@ -218,6 +246,7 @@ class Robot:
 
     def run(self):
         rc = 0
+        self.logger.log(f"No-IP renew script version {VERSION}")
         self.logger.log(f"Debug level: {self.debug}")
         try:
             self.login()
@@ -226,10 +255,11 @@ class Robot:
         except Exception as e:
             self.logger.log(str(e))
             self.browser.save_screenshot("exception.png")
-            try:
-                subprocess.call(['/usr/local/bin/noip-renew-skd.sh', "*", "*", "False"])
-            except (FileNotFoundError,PermissionError):
-                self.logger.log(f"noip-renew-skd.sh missing or not executable, skipping crontab configuration")
+            if not self.docker:
+                try:
+                    subprocess.call(['/usr/local/bin/noip-renew-skd.sh', "*", "*", "False"])
+                except (FileNotFoundError,PermissionError):
+                    self.logger.log(f"noip-renew-skd.sh missing or not executable, skipping crontab configuration")
             rc = 2
         finally:
             self.browser.quit()
@@ -237,15 +267,25 @@ class Robot:
 
 
 def main(argv=None):
-    noip_username, noip_password, debug,  = get_args_values(argv)
-    return (Robot(noip_username, noip_password, debug)).run()
+    # check if we're running on docker
+    DOCKER = os.environ.get("CONTAINER", "").lower() in ("yes", "y", "on", "true", "1")
+    if DOCKER:
+        print("Running inside docker container")
+        noip_username = os.environ.get('NOIP_USERNAME','')
+        noip_password = os.environ.get('NOIP_PASSWORD','')
+        noip_totp = os.environ.get('NOIP_2FA_SECRET_KEY','')
+        debug = int(os.environ.get('NOIP_DEBUG', 1))
+        if len(noip_username) == 0 or len(noip_password) == 0 or len(noip_totp) == 0: sys.exit('You are using docker, you need to specify the required parameters as environment varialbes, check the documentation.')
+    else:
+        noip_username, noip_password, noip_totp, debug = get_args_values(argv)
+    return (Robot(noip_username, noip_password, noip_totp, debug, DOCKER)).run()
 
 
 def get_args_values(argv):
     if argv is None:
         argv = sys.argv
-    if len(argv) < 3:
-        print(f"Usage: {argv[0]} <noip_username_file> <noip_password_file> [<debug-level>] ")
+    if len(argv) < 4:
+        print(f"Usage: {argv[0]} <noip_username> <noip_base64encoded_password> <2FA_secret_key> [<debug-level>] ")
         sys.exit(1)
 
     with open(sys.argv[1],'r') as noip_username_file:
@@ -253,10 +293,11 @@ def get_args_values(argv):
     with open(sys.argv[2],'r') as noip_password_file:
         noip_password=noip_password_file.read().rstrip()
 
+    noip_totp = argv[3]
     debug = 1
-    if len(argv) > 3:
-        debug = int(argv[3])
-    return noip_username, noip_password, debug
+    if len(argv) > 4:
+        debug = int(argv[4])
+    return noip_username, noip_password, noip_totp, debug
 
 
 if __name__ == "__main__":
